@@ -69,7 +69,8 @@ The following tools were used in this project:
 Before starting :checkered_flag:, you need to have following installed 
 - [Git](https://git-scm.com) 
 - [Make] 
-  ```choco install make
+  ```
+  choco install make
   ```
 
 ## :checkered_flag: Starting ##
