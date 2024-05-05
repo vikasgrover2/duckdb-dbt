@@ -82,8 +82,8 @@ $ git clone https://github.com/vikasgrover2/duckdb-dbt
 # Access
 $ cd duckdb-dbt
 
-# Install dependencies
-$ yarn
+# Build the base spark image
+$ ~\github\duckdb-dbt> docker build . -t spark-base
 
 # Run the project
 $ yarn start
