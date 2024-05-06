@@ -68,8 +68,8 @@ The following tools were used in this project:
 
 Before starting :checkered_flag:, you need to have following installed 
 - [Git](https://git-scm.com) 
-- [Make] 
-  ```
+- [Make]
+  ```bash
   choco install make
   ```
 
@@ -85,10 +85,17 @@ $ cd duckdb-dbt
 # Build the base spark image
 $ ~\github\duckdb-dbt> docker build . -t spark-base
 
-# Run the project
-$ yarn start
+# To start the spark cluster
+$ make run-scaled
 
-# The server will initialize in the <http://localhost:3000>
+# A 2 worker spark cluster should now be available at http://localhost:9090/
+
+# To test a sample job
+make submit app=word_non_null.py
+# This will start a job that can be see under the completed applications
+
+# To stop the cluster
+$ make down
 ```
 
 ## :memo: License ##
