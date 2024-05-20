@@ -1,5 +1,6 @@
+ARG py_version=3.11.2
 
-FROM python:3.10.14-slim-bullseye as spark-base
+FROM python:$py_version-slim-bullseye as py-base
 
 ARG SPARK_VERSION=3.3.3
 
@@ -15,13 +16,22 @@ RUN apt-get update && \
       build-essential \
       software-properties-common \
       ssh && \
+    apt-get install -y git && \
+    apt-get install -y --no-install-recommends libpq-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-
 
 # Setup the directories for our Spark and Hadoop installations
 ENV SPARK_HOME=${SPARK_HOME:-"/opt/spark"}
 ENV HADOOP_HOME=${HADOOP_HOME:-"/opt/hadoop"}
+ENV AWS_HOME=${AWS_HOME:-"/opt/aws"}
+
+RUN mkdir -p ${AWS_HOME}
+WORKDIR ${AWS_HOME}
+
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+unzip awscliv2.zip && \
+./aws/install
 
 RUN mkdir -p ${HADOOP_HOME} && mkdir -p ${SPARK_HOME}
 WORKDIR ${SPARK_HOME}
@@ -32,7 +42,7 @@ RUN curl https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SP
  && rm -rf spark-${SPARK_VERSION}-bin-hadoop3.tgz
 
 
-FROM spark-base as pyspark
+FROM py-base as pyspark
 
 # Install python deps
 COPY ./requirements.txt .
@@ -41,12 +51,17 @@ RUN pip3 install -r requirements.txt
 # Setup Spark related environment variables
 ENV PATH="/opt/spark/sbin:/opt/spark/bin:${PATH}"
 ENV SPARK_MASTER="spark://spark-master:7077"
-ENV SPARK_MASTER_HOST spark-master
-ENV SPARK_MASTER_PORT 7077
-ENV PYSPARK_PYTHON python3
+ENV SPARK_MASTER_HOST="spark-master"
+ENV SPARK_MASTER_PORT="7077"
+ENV PYSPARK_PYTHON="python3"
+
+EXPOSE 8080 7077 6066
 
 # Copy the default configurations into $SPARK_HOME/conf
 COPY conf/spark-defaults.conf "$SPARK_HOME/conf"
+
+#Copy driver jars
+COPY ./jars "$SPARK_HOME/jars/"
 
 RUN chmod u+x /opt/spark/sbin/* && \
     chmod u+x /opt/spark/bin/*
