@@ -12,11 +12,19 @@ services:
       timeout: 3s
       retries: 3
     volumes:
-      - ./data:/opt/spark/data
-      - ./spark-apps:/opt/spark/apps
-      - ./spark-logs:/opt/spark/spark-events
+      - ./data/:/opt/spark/data/
+      - ./spark-apps/:/opt/spark/apps/
+      - ./spark-logs/:/opt/spark/spark-events/
+      - ./dbt/spark_dbt/:/opt/dbt/spark_dbt/
+      - ./dbt/logs/:/opt/dbt/logs/
+      - ./.dbt/:/root/.dbt/
+      - ./drivers/:/opt/spark/drivers/
+      - ./spark-conf/:/opt/spark/conf/
     env_file:
       - .env.spark
+    environment:
+      - SPARK_WORKLOAD=master
+      - SPARK_LOCAL_IP=spark-master
     ports:
       - '9090:8080'
       - '7077:7077'
@@ -34,14 +42,58 @@ services:
     ports:
       - '18080:18080'
 
-  spark-worker:
+  spark-worker-a:
     image: spark-base
     entrypoint: ['./entrypoint.sh', 'worker']
     depends_on:
       - spark-master
     env_file:
       - .env.spark
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_CORES=4
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_DRIVER_MEMORY=2G
+      - SPARK_EXECUTOR_MEMORY=4G
+      - SPARK_WORKLOAD=worker
+      - SPARK_LOCAL_IP=spark-worker-a
     volumes:
-      - ./data:/opt/spark/data
-      - ./spark-apps:/opt/spark/apps
-      - ./spark-logs:/opt/spark/spark-events
+      - ./data/:/opt/spark/data/
+      - ./spark-apps/:/opt/spark/apps/
+      - ./spark-logs/:/opt/spark/spark-events/
+      - ./dbt/spark_dbt/:/opt/dbt/spark_dbt/
+      - ./dbt/logs/:/opt/dbt/logs/
+      - ./.dbt/:/root/.dbt/
+      - ./drivers/:/opt/spark/drivers/
+      - ./spark-conf/:/opt/spark/conf/
+    ports:
+      - "9091:8080"
+      - "7000:7000"
+  
+  spark-worker-b:
+    image: spark-base
+    entrypoint: ['./entrypoint.sh', 'worker']
+    depends_on:
+      - spark-master
+    env_file:
+      - .env.spark
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_CORES=4
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_DRIVER_MEMORY=2G
+      - SPARK_EXECUTOR_MEMORY=4G
+      - SPARK_WORKLOAD=worker
+      - SPARK_LOCAL_IP=spark-worker-b
+    volumes:
+      - ./data/:/opt/spark/data/
+      - ./spark-apps/:/opt/spark/apps/
+      - ./spark-logs/:/opt/spark/spark-events/
+      - ./dbt/spark_dbt/:/opt/dbt/spark_dbt/
+      - ./dbt/logs/:/opt/dbt/logs/
+      - ./.dbt/:/root/.dbt/
+      - ./drivers/:/opt/spark/drivers/
+      - ./spark-conf/:/opt/spark/conf/
+    ports:
+      - "9092:8080"
+      - "7001:7000"

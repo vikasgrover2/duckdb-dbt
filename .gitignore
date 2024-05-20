@@ -1,1 +1,5 @@
 spark-logs/
+*.env.spark
+*.log
+*.env
+jars/aws-java-sdk-bundle-1.11.1026.jar
