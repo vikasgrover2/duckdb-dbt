@@ -1,0 +1,13 @@
+spark_dbt:
+  outputs:
+    dev:
+      type: redshift
+      threads: 4
+      host: "{{ env_var('DBT_HOST') }}"
+      port: 5439
+      user: "{{ env_var('DBT_USER') }}"
+      pass: "{{ env_var('DBT_PASSWORD') }}"
+      dbname: "{{ env_var('DBT_DB') }}"
+      schema: "{{ env_var('DBT_SCHEMA') }}"
+
+  target: dev
