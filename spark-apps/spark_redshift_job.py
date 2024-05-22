@@ -9,15 +9,15 @@ sc = SparkContext(conf=conf)
 '''
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='Sparktest.log', format='%(asctime)s:%(message)s', level=logging.INFO)
+logging.basicConfig(filename='spark-events/Sparktest.log', format='%(asctime)s:%(message)s', level=logging.INFO)
 
-pyspark_log = logging.getLogger('pyspark')
+pyspark_log = logging.getLogger('spark')
 pyspark_log.setLevel(logging.ERROR)
 
 #get spark session
 spark = SparkSession.builder \
     .appName("Redshift Connection with PySpark") \
-    .config("spark.jars", "/opt/spark/drivers/redshift-jdbc42-2.1.0.26.jar") \
+    .config("spark.jars", "/opt/spark/jars/redshift-jdbc42-2.1.0.26.jar") \
     .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
     .config('spark.hadoop.fs.s3a.aws.credentials.provider', 'org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider') \
     .config("spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version", "2") \
