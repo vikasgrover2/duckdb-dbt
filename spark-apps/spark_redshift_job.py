@@ -2,6 +2,8 @@ from pyspark.sql import SparkSession
 from pyspark.conf import SparkConf
 import logging
 import os
+import psycopg2
+import boto3
 
 '''conf = SparkConf().setAppName("spark_redshift_app") \
                   .setMaster("spark://spark-master:7077")
@@ -43,7 +45,8 @@ redshift_properties = {
     "driver": "com.amazon.redshift.jdbc42.Driver",
     "tablename": "dbt_test.stvterm",
     #"iam_role": os.environ["AW_IAM_ROLE"],
-    "tmpdir": os.environ["AW_S3_bucket"]
+    "tmpdir": "s3a://"+ os.environ["AWS_S3_bucket"],
+    "s3_bucket": os.environ["AWS_S3_bucket"],
 }
 
 tablename = redshift_properties["tablename"]
@@ -64,35 +67,42 @@ df = spark.read \
 logger.info(f"Ended read table: {tablename}")
 
 tgttable = redshift_properties["tablename"] +'_tgt'
+print("Emptying s3 bucket")
+s3_bucket = redshift_properties["s3_bucket"]
+s3_key = 'spark'
+s3 = boto3.resource('s3', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
+bucket = s3.Bucket(s3_bucket)
+bucket.object_versions.filter(Prefix=f"{s3_key}/").delete()
+print("s3 bucket removed")
 
-'''
-logger.info(f"Starting write table: {tgttable}")
-
-#write the df to a table
-df.write \
-        .format("jdbc") \
-        .option("url", redshift_url) \
-        .option("dbtable", tgttable) \
-        .option("user", redshift_properties["user"]) \
-        .option("password", redshift_properties["password"]) \
-        .option("tempdir", redshift_properties["tmpdir"]) \
-        .option("batchsize", "1000") \
-        .save()
-
-logger.info(f"Ended write table: {tgttable}")
-'''
-
-logger.info(f"Starting write parquet: file.parquet")
-write_path = redshift_properties["tmpdir"]+'/file.csv'
+logger.info(f"Starting write parquet: {tgttable}")
+read_path = "s3://"+f"{s3_bucket}"+f"/{s3_key}"+f"/{tgttable}"
+write_path = "s3a://"+f"{s3_bucket}"+f"/{s3_key}"+f"/{tgttable}"
 
 df.write \
     .format("csv") \
     .mode("append") \
     .save(write_path) \
-
 #.option("aws_iam_role", redshift_properties["iam_role"]) \
+logger.info(f"Ending write parquet: {tgttable}")
 
-logger.info(f"Ending write parquet: file.csv")
+truncate_command = f"truncate table {tgttable} ;"
+conn = psycopg2.connect(dbname=os.environ["DBT_DB"], user=redshift_properties["user"], password=redshift_properties["password"], host=os.environ["DBT_HOST"], port=os.environ["DBT_PORT"])
+cur = conn.cursor()
+print(truncate_command)
+
+cur.execute(truncate_command)
+conn.commit()
+
+logger.info(f"Starting write table: {tgttable}")
+#write the df to a table
+copy_command = f"COPY {tgttable} from '" + f"{read_path}" + f"' CREDENTIALS 'aws_access_key_id={aws_access_key_id};aws_secret_access_key={aws_secret_access_key}' FORMAT AS csv  dateformat 'auto'  timeformat 'auto'"
+
+conn = psycopg2.connect(dbname=os.environ["DBT_DB"], user=redshift_properties["user"], password=redshift_properties["password"], host=os.environ["DBT_HOST"], port=os.environ["DBT_PORT"])
+cur = conn.cursor()
+cur.execute(copy_command)
+conn.commit()
+logger.info(f"Ended write table: {tgttable}")
 
 #df.write.csv("/opt/spark/spark-events/file.csv")
 
