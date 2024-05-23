@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.conf import SparkConf
+from pyspark.sql.functions import col
 import logging
 import os
 import psycopg2
@@ -23,21 +24,23 @@ spark = SparkSession.builder \
     .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
     .config('spark.hadoop.fs.s3a.aws.credentials.provider', 'org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider') \
     .config("spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version", "2") \
+    .config("spark.sql.parquet.int96RebaseModeInWrite", "CORRECTED") \
+    .config("spark.sql.parquet.binaryAsString","true") \
     .config("spark.hadoop.fs.s3a.fast.upload", "true") \
     .getOrCreate()
 
 aws_access_key_id = os.environ["AWS_ACCESS_KEY_ID"]
 aws_secret_access_key = os.environ["AWS_SECRET_ACCESS_KEY"]
+host=os.environ["DBT_HOST"]
+port=os.environ["DBT_PORT"]
+database=os.environ["DBT_DB"]
 
+# add spark context config
 spark._jsc.hadoopConfiguration().set("fs.s3a.access.key", aws_access_key_id)
 spark._jsc.hadoopConfiguration().set("fs.s3a.secret.key", aws_secret_access_key)
 
 #define redshift connection params
-redshift_url = "jdbc:redshift://tamu-usv-rs-01.ckpwibmvkp9u.us-east-1.redshift.amazonaws.com:5439/tamu".format(
-    host=os.environ["DBT_HOST"],
-    port=os.environ["DBT_PORT"],
-    database=os.environ["DBT_DB"]
-)
+redshift_url = f"jdbc:redshift://{host}:{port}/{database}"
 
 redshift_properties = {
     "user": os.environ["DBT_USER"],
@@ -69,7 +72,7 @@ logger.info(f"Ended read table: {tablename}")
 tgttable = redshift_properties["tablename"] +'_tgt'
 print("Emptying s3 bucket")
 s3_bucket = redshift_properties["s3_bucket"]
-s3_key = 'spark'
+s3_key = 'spark_parquet'
 s3 = boto3.resource('s3', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
 bucket = s3.Bucket(s3_bucket)
 bucket.object_versions.filter(Prefix=f"{s3_key}/").delete()
@@ -79,12 +82,25 @@ logger.info(f"Starting write parquet: {tgttable}")
 read_path = "s3://"+f"{s3_bucket}"+f"/{s3_key}"+f"/{tgttable}"
 write_path = "s3a://"+f"{s3_bucket}"+f"/{s3_key}"+f"/{tgttable}"
 
+'''
+def spark_dtypes(typels):
+    return typels[0], typels[1]
+
+df_dtypes = df.dtypes
+df_dtypes_ls = list(map(spark_dtypes, df_dtypes))
+print(df_dtypes_ls)
+
+for colname, coltype in df_dtypes_ls:
+    df = df.withColumn(colname, col(colname).cast(coltype))
+'''
+
 df.write \
-    .format("csv") \
+    .format("parquet") \
     .mode("append") \
     .save(write_path) \
 #.option("aws_iam_role", redshift_properties["iam_role"]) \
 logger.info(f"Ending write parquet: {tgttable}")
+
 
 truncate_command = f"truncate table {tgttable} ;"
 conn = psycopg2.connect(dbname=os.environ["DBT_DB"], user=redshift_properties["user"], password=redshift_properties["password"], host=os.environ["DBT_HOST"], port=os.environ["DBT_PORT"])
@@ -96,7 +112,7 @@ conn.commit()
 
 logger.info(f"Starting write table: {tgttable}")
 #write the df to a table
-copy_command = f"COPY {tgttable} from '" + f"{read_path}" + f"' CREDENTIALS 'aws_access_key_id={aws_access_key_id};aws_secret_access_key={aws_secret_access_key}' FORMAT AS csv  dateformat 'auto'  timeformat 'auto'"
+copy_command = f"COPY {tgttable} from '" + f"{read_path}" + f"' CREDENTIALS 'aws_access_key_id={aws_access_key_id};aws_secret_access_key={aws_secret_access_key}' FORMAT AS PARQUET"
 
 conn = psycopg2.connect(dbname=os.environ["DBT_DB"], user=redshift_properties["user"], password=redshift_properties["password"], host=os.environ["DBT_HOST"], port=os.environ["DBT_PORT"])
 cur = conn.cursor()
