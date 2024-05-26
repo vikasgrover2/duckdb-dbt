@@ -13,7 +13,7 @@ spark_dbt:
 spark_parquet:
   outputs:
     dev:
-      host: spark-master
+      host: spark-thrift
       method: thrift
       port: 10000
       schema: default

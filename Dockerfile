@@ -13,6 +13,7 @@ RUN apt-get update && \
       openjdk-11-jdk \
       build-essential \
       iputils-ping \
+      telnet \
       software-properties-common \
       ssh && \
       apt-get install -y git && \

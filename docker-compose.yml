@@ -91,7 +91,8 @@ services:
     ports:
       - "9092:8080"
       - "7001:7000"
-  spark-thrift-server:
+
+  spark-thrift:
     image: spark-base
     entrypoint: ['./entrypoint.sh', 'thrift']
     ports:
@@ -107,6 +108,7 @@ services:
         - ./dbt/:/opt/dbt/
         - ./dbt/logs/:/opt/dbt/logs/
         - ./.dbt/:/root/.dbt/
+    hostname: spark-thrift
     env_file:
       - .env.spark
     environment:

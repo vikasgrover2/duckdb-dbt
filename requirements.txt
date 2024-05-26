@@ -7,3 +7,4 @@ dbt-spark[PyHive]==1.7.1
 dbt-spark[session]==1.7.1
 dbt-redshift==1.7.7
 duckdb==0.10.2
+thrift_sasl~=0.4.3
