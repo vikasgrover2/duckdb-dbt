@@ -13,4 +13,7 @@ then
 elif [ "$SPARK_WORKLOAD" == "history" ]
 then
   start-history-server.sh
+elif [ "$SPARK_WORKLOAD" == "thrift" ]
+then
+  start-thriftserver.sh --master spark://spark-master:7077
 fi
