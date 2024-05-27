@@ -42,7 +42,7 @@ stop-yarn:
 
 
 submit:
-	docker exec spark-master spark-submit --master spark://spark-master:7077 --total-executor-cores 8 --driver-memory 4G --executor-memory 2G --deploy-mode client ./apps/$(app)
+	docker exec spark-master spark-submit --master spark://spark-master:7077 --executor-cores 2 --driver-memory 1G --executor-memory 2G --deploy-mode client ./apps/$(app)
 
 submit-da-book:
 	make submit app=data_analysis_book/$(app)

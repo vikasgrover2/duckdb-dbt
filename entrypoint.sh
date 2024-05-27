@@ -15,5 +15,5 @@ then
   start-history-server.sh
 elif [ "$SPARK_WORKLOAD" == "thrift" ]
 then
-  start-thriftserver.sh --master spark://spark-master:7077
+  start-thriftserver.sh --master spark://spark-master:7077 --hiveconf spark.cores.max=2
 fi

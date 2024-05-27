@@ -2,6 +2,7 @@ from pyspark.sql import SparkSession
 from pyspark.conf import SparkConf
 from pyspark.sql.functions import col
 import logging
+from pyhive import hive
 import os
 import psycopg2
 import boto3
@@ -119,6 +120,16 @@ cur = conn.cursor()
 cur.execute(copy_command)
 conn.commit()
 logger.info(f"Ended write table: {tgttable}")
+
+thrift_host = os.environ["THRIFT_URL"]
+thrift_port = os.environ["THRIFT_PORT"]
+thrift_user = os.environ["THRIFT_USER"]
+
+conn = hive.Connection(host=thrift_host, port=thrift_port,username =thrift_user)
+cursor = conn.cursor()
+cursor.execute("Select count(*) from kv2")
+row = cursor.fetchone()
+print("Count = " + str(row[0]))
 
 #df.write.csv("/opt/spark/spark-events/file.csv")
 
